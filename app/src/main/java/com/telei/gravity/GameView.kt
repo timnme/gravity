@@ -11,7 +11,7 @@ import android.view.animation.LinearInterpolator
 import androidx.core.content.ContextCompat
 import kotlin.math.sqrt
 
-private infix fun Float.and(y: Float): PointF = PointF(this, y)
+infix fun Float.and(y: Float): PointF = PointF(this, y)
 
 private const val G: Double = 6.67408E-11 // gravitational constant
 private const val M: Double = 1.0         // point mass
