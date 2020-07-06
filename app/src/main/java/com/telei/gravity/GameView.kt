@@ -8,38 +8,84 @@ import android.view.MotionEvent
 import android.view.MotionEvent.*
 import android.view.View
 import android.view.animation.LinearInterpolator
+import androidx.core.content.ContextCompat
 import kotlin.math.sqrt
-import kotlin.random.Random
 
 private infix fun Float.and(y: Float): PointF = PointF(this, y)
 
-private const val G: Double = 6.67408E-11
-private const val M: Double = 1.0 // point mass
-private const val SPF: Float = 1f / 120f // seconds per frame
-private const val MPP = 10000 // meters per pixel
+private const val G: Double = 6.67408E-11 // gravitational constant
+private const val M: Double = 1.0         // point mass
+private const val SPF: Float = 1f / 120f  // seconds per frame
+private const val SPF2: Float = SPF * SPF // seconds per frame squared
+private const val MPP = 5000f             // meters per pixel
 
-data class Attractor(
-    val x: Float,
-    val y: Float,
-    val m: Double,
-    val r: Float // pixels todo meters?
+private const val POINT_X = 1f / 4f
+private const val POINT_Y = 3f / 4f
+
+data class Attraction(val completed: Boolean)
+
+data class Body(
+    val x0: Float,                   // pixels
+    val y0: Float,                   // pixels
+    val m: Double,                   // kg
+    val r: Float,                    // pixels
+    var x: Float = x0,               // pixels
+    var y: Float = y0,               // pixels
+    var vX: Float = 0f,              // pixels/s
+    var vY: Float = 0f,              // pixels/s
+    val attractable: Boolean = false,
+    val paint: Paint = Paint(),
+    val tracePath: Path = Path(),
+    val tracePaint: Paint = Paint()
 ) {
-    fun calculateAttraction(point: PointF): Triple<Boolean, Float, Float> {
-        val attrDxPixels = x - point.x
-        val attrDyPixels = y - point.y
-        val attrDistPixels = sqrt(attrDxPixels * attrDxPixels + attrDyPixels * attrDyPixels)
-        val attrDx = attrDxPixels * MPP
-        val attrDy = attrDyPixels * MPP
-        val attrDist = sqrt(attrDx * attrDx + attrDy * attrDy)
-        val effectiveM = m * (if (attrDistPixels > r) 1f else attrDistPixels / r)
-        val force = G * M * effectiveM / (attrDist * attrDist)
-        val forceDelta = force / attrDist
-        val forceX = forceDelta * attrDx
-        val forceY = forceDelta * attrDy
-        val accelX = forceX / M
-        val accelY = forceY / M
-        return Triple(attrDist < r, accelX.toFloat(), accelY.toFloat())
+    fun attract(body: Body): Attraction {
+        val dxPixels = (x - body.x)
+        val dyPixels = (y - body.y)
+        val distancePixels = sqrt(dxPixels * dxPixels + dyPixels * dyPixels)
+        if (body.attractable || attractable) {
+            val dx = dxPixels * MPP
+            val dy = dyPixels * MPP
+            val distance = distancePixels * MPP
+            val force = G * m * body.m / (distance * distance)
+            val unitForce = force / distance
+            val forceX = unitForce * dx
+            val forceY = unitForce * dy
+            if (body.attractable) {
+                val accelerationX = (forceX / body.m).toFloat()
+                val accelerationY = (forceY / body.m).toFloat()
+                body.vX += accelerationX * SPF
+                body.vY += accelerationY * SPF
+                body.x += body.vX * SPF
+                body.y += body.vY * SPF
+                body.tracePath.lineTo(body.x, body.y)
+            }
+            if (attractable) {
+                val accelerationX = -(forceX / m).toFloat()
+                val accelerationY = -(forceY / m).toFloat()
+                vX += accelerationX * SPF
+                vY += accelerationY * SPF
+                x += vX * SPF
+                y += vY * SPF
+//                    tracePath.lineTo(x, y)
+            }
+        }
+        return Attraction(completed = distancePixels < r)
     }
+
+    fun reset() {
+        x = x0
+        y = y0
+        vX = 0f
+        vY = 0f
+        tracePath.reset()
+        tracePath.moveTo(x0, y0)
+    }
+}
+
+private fun createPaint() = Paint().apply {
+    style = Paint.Style.FILL
+    isAntiAlias = true
+    isDither = true
 }
 
 class GameView @JvmOverloads constructor(
@@ -47,89 +93,117 @@ class GameView @JvmOverloads constructor(
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
-    private val pointR = 15f
-    private val aimR = 50f
+    private val cursorLength = context.resources.getDimension(R.dimen.cursor)
 
-    private val pointPaint = Paint().apply {
-        style = Paint.Style.FILL
-        color = Color.BLACK
-        isAntiAlias = true
-        isDither = true
-    }
-    private val aimPaint = Paint().apply {
-        style = Paint.Style.FILL
-        color = Color.BLACK
-        alpha = (255 * 0.3).toInt()
-        isAntiAlias = true
-        isDither = true
-    }
-    private val attractorPaint = Paint().apply {
-        style = Paint.Style.FILL
-        color = Color.BLACK
-        alpha = (255 * 0.6).toInt()
-        isAntiAlias = true
-        isDither = true
-    }
+    private val pointColor = ContextCompat.getColor(context, R.color.colorAccent)
+    private val aimColor = ContextCompat.getColor(context, R.color.colorPrimaryDark)
+
+    private val pointSize = context.resources.getDimension(R.dimen.point)
+    private val aimSize = context.resources.getDimension(R.dimen.aim)
+    private val attractorSize = context.resources.getDimension(R.dimen.attractor)
+
     private val slingPath = Path()
-    private val slingPaint = Paint().apply {
+    private val slingPaint = createPaint().apply {
         style = Paint.Style.STROKE
-        strokeWidth = 5f
-        color = Color.BLUE
-        isAntiAlias = true
-        isDither = true
+        color = pointColor
+        strokeWidth = 4f
     }
-
-    private val travelPath = Path()
-    private val travelPaint = Paint().apply {
+    private val cursorPath = Path()
+    private val cursorPaint = createPaint().apply {
         style = Paint.Style.STROKE
+        pathEffect = DashPathEffect(floatArrayOf(3f, 5f), 0f)
+        color = pointColor
         strokeWidth = 3f
-        color = Color.RED
-        isAntiAlias = true
-        isDither = true
     }
 
-    private val attractors: MutableList<Attractor> = mutableListOf()
+    private val attractors: MutableList<Body> = mutableListOf()
 
     private var valueAnimator: ValueAnimator? = null
 
-    private var pointP = 0f and 0f
-    private var touchP = -100f and -100f
-    private var aimP = 0f and 0f
+    private var touchP: PointF = 0f and 0f
+
+    private lateinit var aim: Body
+    private lateinit var point: Body
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        pointP = 0.2f * w and 0.8f * h
-        aimP = 0.8f * w and 0.2f * h
-        repeat(5) {
-            attractors.add(
-                Attractor(
-                    x = Random.nextInt(3, 8).toFloat() * 0.1f * w,
-                    y = Random.nextInt(3, 8).toFloat() * 0.1f * h,
-                    m = Random.nextInt(1, 10) * 1E25,
-                    r = Random.nextInt(15, 30).toFloat()
-                )
-            )
+        val pointPaint = createPaint().apply {
+            color = pointColor
         }
+        val aimPaint = createPaint().apply {
+            color = aimColor
+        }
+        val attractorPaint = createPaint().apply {
+            color = Color.BLACK
+        }
+        val travelPaint = createPaint().apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 3f
+            pathEffect = DashPathEffect(floatArrayOf(7f, 4f), 0f)
+            color = pointColor
+        }
+
+        aim = Body(
+            x0 = 0.8f * w,
+            y0 = 0.2f * h,
+            m = 0.0,
+            r = aimSize,
+            paint = aimPaint
+        )
+        point = Body(
+            x0 = POINT_X * w,
+            y0 = POINT_Y * h,
+            m = M,
+            r = pointSize,
+            attractable = true,
+            paint = pointPaint,
+            tracePaint = travelPaint
+        )
+        attractors.add(
+            Body(
+                x0 = 0.5f * w,
+                y0 = 0.5f * h,
+                m = 1E25,
+                r = attractorSize,
+                paint = attractorPaint
+            )
+        )
     }
 
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
         canvas ?: return
         canvas.drawPath(slingPath, slingPaint)
-        canvas.drawPath(travelPath, travelPaint)
-        canvas.drawCircle(aimP.x, aimP.y, aimR, aimPaint)
+        canvas.drawPath(cursorPath, cursorPaint)
+        canvas.drawCircle(aim.x, aim.y, aim.r, aim.paint)
+        canvas.drawPath(point.tracePath, point.tracePaint)
         attractors.forEach {
-            canvas.drawCircle(it.x, it.y, it.r, attractorPaint)
+//            canvas.drawPath(it.tracePath, it.tracePaint)
+            canvas.drawCircle(it.x, it.y, it.r, it.paint)
         }
-        canvas.drawCircle(pointP.x, pointP.y, pointR, pointPaint)
+        canvas.drawCircle(point.x, point.y, point.r, point.paint)
     }
 
     override fun onTouchEvent(event: MotionEvent?): Boolean {
         event ?: return false
         touchP = event.x and event.y
-        slingPath.reset()
-        slingPath.moveTo(pointP.x, pointP.y)
-        slingPath.lineTo(touchP.x, touchP.y)
+        with(slingPath) {
+            reset()
+            moveTo(point.x, point.y)
+            lineTo(touchP.x, touchP.y)
+        }
+        val slingDx = point.x - touchP.x
+        val slingDy = point.y - touchP.y
+        with(cursorPath) {
+            reset()
+            moveTo(point.x, point.y)
+            val slingHypothesis = sqrt(slingDx * slingDx + slingDy * slingDy)
+            val sin = slingDx / slingHypothesis
+            val cos = slingDy / slingHypothesis
+            val cursorDx = cursorLength * sin
+            val cursorDy = cursorLength * cos
+            lineTo(point.x + cursorDx, point.y + cursorDy)
+        }
         when (event.action) {
             ACTION_DOWN -> {
                 valueAnimator?.cancel()
@@ -140,58 +214,42 @@ class GameView @JvmOverloads constructor(
             }
             ACTION_UP -> {
                 slingPath.reset()
-                var velocityX = pointP.x - touchP.x
-                var velocityY = pointP.y - touchP.y
+                cursorPath.reset()
+                point.vX = slingDx * 10
+                point.vY = slingDy * 10
                 val time = Float.MAX_VALUE
                 valueAnimator = ValueAnimator.ofFloat(0f, time).apply {
                     duration = time.toLong()
                     interpolator = LinearInterpolator()
                     var prevTime = System.nanoTime()
-                    var deltaT = 0f
                     addUpdateListener {
                         val currentTime = System.nanoTime()
-                        deltaT += currentTime - prevTime
-                        prevTime = currentTime
-
-                        if (deltaT > SPF * 1E9) {
-                            deltaT = 0f
+                        if (currentTime - prevTime > SPF * 1E9) {
+                            prevTime = currentTime
 
                             var attracted = false
-
                             attractors.forEach {
-                                it.calculateAttraction(pointP).run {
-                                    if (first) {
-                                        attracted = true
-                                    } else {
-                                        velocityX += second * SPF
-                                        velocityY += third * SPF
+                                val attraction = it.attract(point)
+                                if (attraction.completed) {
+                                    attracted = true
+                                }
+                                attractors.forEach { nested ->
+                                    if (nested != it) {
+                                        it.attract(nested)
                                     }
                                 }
                             }
-
-                            pointP.x = pointP.x + velocityX * SPF
-                            pointP.y = pointP.y + velocityY * SPF
-
-                            travelPath.lineTo(pointP.x, pointP.y)
 
                             if (attracted) {
                                 finish()
                                 removeAllUpdateListeners()
                             } else {
-                                val aimDx = aimP.x - pointP.x
-                                val aimDy = aimP.y - pointP.y
-                                val aimDist = sqrt(aimDx * aimDx + aimDy * aimDy)
-                                if (aimDist <= aimR) {
-                                    finish()
-                                    removeAllUpdateListeners()
-                                } else {
-//                                if (pointP.y < 0 || pointP.y > height) {
+//                                if (aim.attract(point).completed) {
 //                                    finish()
 //                                    removeAllUpdateListeners()
-//                                } else {
 //                                }
-                                }
                             }
+
                             invalidate()
                         }
                     }
@@ -199,15 +257,11 @@ class GameView @JvmOverloads constructor(
                 }
             }
         }
-
         return true
     }
 
     private fun finish() {
-        travelPath.reset()
-        pointP.x = 0.2f * width
-        pointP.y = 0.8f * height
-        travelPath.moveTo(pointP.x, pointP.y)
+        point.reset()
         invalidate()
     }
 
