@@ -1,13 +1,12 @@
 package com.telei.gravity
 
-import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.*
 import android.util.AttributeSet
+import android.view.Choreographer
 import android.view.MotionEvent
 import android.view.MotionEvent.*
 import android.view.View
-import android.view.animation.LinearInterpolator
 import androidx.core.content.ContextCompat
 import kotlin.math.sqrt
 
@@ -15,8 +14,6 @@ infix fun Float.and(y: Float): PointF = PointF(this, y)
 
 private const val G: Double = 6.67408E-11 // gravitational constant
 private const val M: Double = 1.0         // point mass
-private const val SPF: Float = 1f / 120f  // seconds per frame
-private const val SPF2: Float = SPF * SPF // seconds per frame squared
 private const val MPP = 5000f             // meters per pixel
 
 private const val POINT_X = 1f / 4f
@@ -25,6 +22,7 @@ private const val POINT_Y = 3f / 4f
 data class Attraction(val completed: Boolean)
 
 data class Body(
+    val id: Int,
     val x0: Float,                   // pixels
     val y0: Float,                   // pixels
     val m: Double,                   // kg
@@ -38,7 +36,7 @@ data class Body(
     val tracePath: Path = Path(),
     val tracePaint: Paint = Paint()
 ) {
-    fun attract(body: Body): Attraction {
+    fun attract(body: Body, time: Float): Attraction {
         val dxPixels = (x - body.x)
         val dyPixels = (y - body.y)
         val distancePixels = sqrt(dxPixels * dxPixels + dyPixels * dyPixels)
@@ -53,20 +51,20 @@ data class Body(
             if (body.attractable) {
                 val accelerationX = (forceX / body.m).toFloat()
                 val accelerationY = (forceY / body.m).toFloat()
-                body.vX += accelerationX * SPF
-                body.vY += accelerationY * SPF
-                body.x += body.vX * SPF
-                body.y += body.vY * SPF
+                body.vX += accelerationX * time
+                body.vY += accelerationY * time
+                body.x += body.vX * time
+                body.y += body.vY * time
                 body.tracePath.lineTo(body.x, body.y)
             }
             if (attractable) {
                 val accelerationX = -(forceX / m).toFloat()
                 val accelerationY = -(forceY / m).toFloat()
-                vX += accelerationX * SPF
-                vY += accelerationY * SPF
-                x += vX * SPF
-                y += vY * SPF
-//                    tracePath.lineTo(x, y)
+                vX += accelerationX * time
+                vY += accelerationY * time
+                x += vX * time
+                y += vY * time
+//                tracePath.lineTo(x, y)
             }
         }
         return Attraction(completed = distancePixels < r)
@@ -92,7 +90,7 @@ class GameView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
-) : View(context, attrs, defStyleAttr) {
+) : View(context, attrs, defStyleAttr), Choreographer.FrameCallback {
     private val cursorLength = context.resources.getDimension(R.dimen.cursor)
 
     private val pointColor = ContextCompat.getColor(context, R.color.colorAccent)
@@ -101,6 +99,8 @@ class GameView @JvmOverloads constructor(
     private val pointSize = context.resources.getDimension(R.dimen.point)
     private val aimSize = context.resources.getDimension(R.dimen.aim)
     private val attractorSize = context.resources.getDimension(R.dimen.attractor)
+
+    private var pointStart = 0f and 0f
 
     private val slingPath = Path()
     private val slingPaint = createPaint().apply {
@@ -118,15 +118,15 @@ class GameView @JvmOverloads constructor(
 
     private val attractors: MutableList<Body> = mutableListOf()
 
-    private var valueAnimator: ValueAnimator? = null
-
-    private var touchP: PointF = 0f and 0f
-
     private lateinit var aim: Body
     private lateinit var point: Body
 
+    private var launched = false
+    private var lastFrameTimeNanos = System.nanoTime()
+
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
+
         val pointPaint = createPaint().apply {
             color = pointColor
         }
@@ -143,7 +143,11 @@ class GameView @JvmOverloads constructor(
             color = pointColor
         }
 
+        pointStart = POINT_X * w and POINT_Y * h
+
+        var id = 0
         aim = Body(
+            id = id++,
             x0 = 0.8f * w,
             y0 = 0.2f * h,
             m = 0.0,
@@ -151,8 +155,9 @@ class GameView @JvmOverloads constructor(
             paint = aimPaint
         )
         point = Body(
-            x0 = POINT_X * w,
-            y0 = POINT_Y * h,
+            id = id++,
+            x0 = pointStart.x,
+            y0 = pointStart.y,
             m = M,
             r = pointSize,
             attractable = true,
@@ -161,6 +166,7 @@ class GameView @JvmOverloads constructor(
         )
         attractors.add(
             Body(
+                id = id,
                 x0 = 0.5f * w,
                 y0 = 0.5f * h,
                 m = 1E25,
@@ -168,15 +174,54 @@ class GameView @JvmOverloads constructor(
                 paint = attractorPaint
             )
         )
+
+        Choreographer.getInstance().postFrameCallback(this)
+    }
+
+    var a = -1
+
+    override fun doFrame(frameTimeNanos: Long) {
+        if (launched) {
+            val timeSeconds = ((frameTimeNanos - lastFrameTimeNanos) / 1E9).toFloat()
+            var attracted = false
+            attractors.forEach {
+                if (it.y < 0.3 * height) a = +1
+                if (it.y > 0.7 * height) a = -1
+                it.y = it.y + a * (timeSeconds * height / 10f)
+                if (it.attract(point, timeSeconds).completed) {
+                    attracted = true
+                }
+                attractors.forEach { nested ->
+                    if (nested.id != it.id) {
+                        it.attract(nested, timeSeconds)
+                    }
+                }
+            }
+            if (attracted || aim.attract(point, timeSeconds).completed) {
+                finish()
+            } else {
+                invalidate()
+            }
+        }
+        lastFrameTimeNanos = frameTimeNanos
+        Choreographer.getInstance().postFrameCallback(this)
+    }
+
+    private fun finish() {
+        launched = false
+        point.reset()
+        invalidate()
     }
 
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
         canvas ?: return
-        canvas.drawPath(slingPath, slingPaint)
-        canvas.drawPath(cursorPath, cursorPaint)
+        if (!launched) {
+            canvas.drawPath(slingPath, slingPaint)
+            canvas.drawPath(cursorPath, cursorPaint)
+        }
         canvas.drawCircle(aim.x, aim.y, aim.r, aim.paint)
-        canvas.drawPath(point.tracePath, point.tracePaint)
+//        canvas.drawPath(point.tracePath, point.tracePaint)
         attractors.forEach {
 //            canvas.drawPath(it.tracePath, it.tracePaint)
             canvas.drawCircle(it.x, it.y, it.r, it.paint)
@@ -186,27 +231,25 @@ class GameView @JvmOverloads constructor(
 
     override fun onTouchEvent(event: MotionEvent?): Boolean {
         event ?: return false
-        touchP = event.x and event.y
+        val x = event.x
+        val y = event.y
         with(slingPath) {
             reset()
-            moveTo(point.x, point.y)
-            lineTo(touchP.x, touchP.y)
+            moveTo(pointStart.x, pointStart.y)
+            lineTo(x, y)
         }
-        val slingDx = point.x - touchP.x
-        val slingDy = point.y - touchP.y
+        val slingDx = pointStart.x - x
+        val slingDy = pointStart.y - y
         with(cursorPath) {
             reset()
-            moveTo(point.x, point.y)
+            moveTo(pointStart.x, pointStart.y)
             val slingHypothesis = sqrt(slingDx * slingDx + slingDy * slingDy)
-            val sin = slingDx / slingHypothesis
-            val cos = slingDy / slingHypothesis
-            val cursorDx = cursorLength * sin
-            val cursorDy = cursorLength * cos
-            lineTo(point.x + cursorDx, point.y + cursorDy)
+            val cursorDx = cursorLength * slingDx / slingHypothesis
+            val cursorDy = cursorLength * slingDy / slingHypothesis
+            lineTo(pointStart.x + cursorDx, pointStart.y + cursorDy)
         }
         when (event.action) {
             ACTION_DOWN -> {
-                valueAnimator?.cancel()
                 finish()
             }
             ACTION_MOVE -> {
@@ -215,54 +258,12 @@ class GameView @JvmOverloads constructor(
             ACTION_UP -> {
                 slingPath.reset()
                 cursorPath.reset()
-                point.vX = slingDx * 10
-                point.vY = slingDy * 10
-                val time = Float.MAX_VALUE
-                valueAnimator = ValueAnimator.ofFloat(0f, time).apply {
-                    duration = time.toLong()
-                    interpolator = LinearInterpolator()
-                    var prevTime = System.nanoTime()
-                    addUpdateListener {
-                        val currentTime = System.nanoTime()
-                        if (currentTime - prevTime > SPF * 1E9) {
-                            prevTime = currentTime
-
-                            var attracted = false
-                            attractors.forEach {
-                                val attraction = it.attract(point)
-                                if (attraction.completed) {
-                                    attracted = true
-                                }
-                                attractors.forEach { nested ->
-                                    if (nested != it) {
-                                        it.attract(nested)
-                                    }
-                                }
-                            }
-
-                            if (attracted) {
-                                finish()
-                                removeAllUpdateListeners()
-                            } else {
-//                                if (aim.attract(point).completed) {
-//                                    finish()
-//                                    removeAllUpdateListeners()
-//                                }
-                            }
-
-                            invalidate()
-                        }
-                    }
-                    start()
-                }
+                point.vX = slingDx
+                point.vY = slingDy
+                launched = true
             }
         }
         return true
-    }
-
-    private fun finish() {
-        point.reset()
-        invalidate()
     }
 
 }
