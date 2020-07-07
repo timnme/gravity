@@ -14,71 +14,13 @@ infix fun Float.and(y: Float): PointF = PointF(this, y)
 
 private const val G: Double = 6.67408E-11 // gravitational constant
 private const val M: Double = 1.0         // point mass
-private const val MPP = 5000f             // meters per pixel
+private const val MPP = 10000f             // meters per pixel
 
-private const val POINT_X = 1f / 4f
-private const val POINT_Y = 3f / 4f
+private const val POINT_X = 2f / 4f
+private const val POINT_Y = 8f / 9f
 
 data class Attraction(val completed: Boolean)
 
-data class Body(
-    val id: Int,
-    val x0: Float,                   // pixels
-    val y0: Float,                   // pixels
-    val m: Double,                   // kg
-    val r: Float,                    // pixels
-    var x: Float = x0,               // pixels
-    var y: Float = y0,               // pixels
-    var vX: Float = 0f,              // pixels/s
-    var vY: Float = 0f,              // pixels/s
-    val attractable: Boolean = false,
-    val paint: Paint = Paint(),
-    val tracePath: Path = Path(),
-    val tracePaint: Paint = Paint()
-) {
-    fun attract(body: Body, time: Float): Attraction {
-        val dxPixels = (x - body.x)
-        val dyPixels = (y - body.y)
-        val distancePixels = sqrt(dxPixels * dxPixels + dyPixels * dyPixels)
-        if (body.attractable || attractable) {
-            val dx = dxPixels * MPP
-            val dy = dyPixels * MPP
-            val distance = distancePixels * MPP
-            val force = G * m * body.m / (distance * distance)
-            val unitForce = force / distance
-            val forceX = unitForce * dx
-            val forceY = unitForce * dy
-            if (body.attractable) {
-                val accelerationX = (forceX / body.m).toFloat()
-                val accelerationY = (forceY / body.m).toFloat()
-                body.vX += accelerationX * time
-                body.vY += accelerationY * time
-                body.x += body.vX * time
-                body.y += body.vY * time
-                body.tracePath.lineTo(body.x, body.y)
-            }
-            if (attractable) {
-                val accelerationX = -(forceX / m).toFloat()
-                val accelerationY = -(forceY / m).toFloat()
-                vX += accelerationX * time
-                vY += accelerationY * time
-                x += vX * time
-                y += vY * time
-//                tracePath.lineTo(x, y)
-            }
-        }
-        return Attraction(completed = distancePixels < r)
-    }
-
-    fun reset() {
-        x = x0
-        y = y0
-        vX = 0f
-        vY = 0f
-        tracePath.reset()
-        tracePath.moveTo(x0, y0)
-    }
-}
 
 private fun createPaint() = Paint().apply {
     style = Paint.Style.FILL
@@ -124,8 +66,85 @@ class GameView @JvmOverloads constructor(
     private var launched = false
     private var lastFrameTimeNanos = System.nanoTime()
 
+    private lateinit var extraBitmap: Bitmap
+    private lateinit var extraCanvas: Canvas
+
+
+    inner class Body(
+        val id: Int,
+        val x0: Float,                   // pixels
+        val y0: Float,                   // pixels
+        val m: Double,                   // kg
+        val r: Float,                    // pixels
+        var x: Float = x0,               // pixels
+        var y: Float = y0,               // pixels
+        var vX: Float = 0f,              // pixels/s
+        var vY: Float = 0f,              // pixels/s
+        val attractable: Boolean = false,
+        val paint: Paint = Paint(),
+        val tracePath: Path = Path(),
+        val tracePaint: Paint = Paint()
+    ) {
+        init {
+            extraCanvas.drawCircle(x, y, r, paint)
+        }
+
+        fun attract(body: Body, time: Float): Attraction {
+            val dxPixels = (x - body.x)
+            val dyPixels = (y - body.y)
+            val distancePixels = sqrt(dxPixels * dxPixels + dyPixels * dyPixels)
+            if (body.attractable || attractable) {
+                val dx = dxPixels * MPP
+                val dy = dyPixels * MPP
+                val distance = distancePixels * MPP
+                val force = G * m * body.m / (distance * distance)
+                val unitForce = force / distance
+                val forceX = unitForce * dx
+                val forceY = unitForce * dy
+                if (body.attractable) {
+                    val accelerationX = (forceX / body.m).toFloat()
+                    val accelerationY = (forceY / body.m).toFloat()
+                    body.vX += accelerationX * time
+                    body.vY += accelerationY * time
+                    body.tracePath.reset()
+                    body.tracePath.moveTo(body.x, body.y)
+                    body.x += body.vX * time
+                    body.y += body.vY * time
+                    body.tracePath.lineTo(body.x, body.y)
+                    extraCanvas.drawPath(point.tracePath, point.tracePaint)
+                }
+                if (attractable) {
+                    val accelerationX = -(forceX / m).toFloat()
+                    val accelerationY = -(forceY / m).toFloat()
+                    vX += accelerationX * time
+                    vY += accelerationY * time
+//                    tracePath.reset()
+//                    tracePath.moveTo(x, y)
+                    x += vX * time
+                    y += vY * time
+//                    tracePath.lineTo(x, y)
+//                    extraCanvas.drawPath(tracePath, tracePaint)
+                }
+            }
+            return Attraction(completed = distancePixels < r)
+        }
+
+        fun reset() {
+            x = x0
+            y = y0
+            vX = 0f
+            vY = 0f
+            tracePath.reset()
+            tracePath.moveTo(x0, y0)
+        }
+    }
+
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
+
+        if (::extraBitmap.isInitialized) extraBitmap.recycle()
+        extraBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        extraCanvas = Canvas(extraBitmap)
 
         val pointPaint = createPaint().apply {
             color = pointColor
@@ -148,8 +167,8 @@ class GameView @JvmOverloads constructor(
         var id = 0
         aim = Body(
             id = id++,
-            x0 = 0.8f * w,
-            y0 = 0.2f * h,
+            x0 = 0.5f * w,
+            y0 = 0.1f * h,
             m = 0.0,
             r = aimSize,
             paint = aimPaint
@@ -166,10 +185,30 @@ class GameView @JvmOverloads constructor(
         )
         attractors.add(
             Body(
-                id = id,
+                id = id++,
+                x0 = 0.2f * w,
+                y0 = 0.5f * h,
+                m = 1E26,
+                r = attractorSize,
+                paint = attractorPaint
+            )
+        )
+        attractors.add(
+            Body(
+                id = id++,
                 x0 = 0.5f * w,
                 y0 = 0.5f * h,
                 m = 1E25,
+                r = attractorSize,
+                paint = attractorPaint
+            )
+        )
+        attractors.add(
+            Body(
+                id = id++,
+                x0 = 0.8f * w,
+                y0 = 0.5f * h,
+                m = 1E26,
                 r = attractorSize,
                 paint = attractorPaint
             )
@@ -185,9 +224,9 @@ class GameView @JvmOverloads constructor(
             val timeSeconds = ((frameTimeNanos - lastFrameTimeNanos) / 1E9).toFloat()
             var attracted = false
             attractors.forEach {
-                if (it.y < 0.3 * height) a = +1
-                if (it.y > 0.7 * height) a = -1
-                it.y = it.y + a * (timeSeconds * height / 10f)
+//                if (it.y < 0.3 * height) a = +1
+//                if (it.y > 0.7 * height) a = -1
+//                it.y = it.y + a * (timeSeconds * height / 10f)
                 if (it.attract(point, timeSeconds).completed) {
                     attracted = true
                 }
@@ -216,15 +255,10 @@ class GameView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
         canvas ?: return
+        canvas.drawBitmap(extraBitmap, 0f, 0f, null)
         if (!launched) {
             canvas.drawPath(slingPath, slingPaint)
             canvas.drawPath(cursorPath, cursorPaint)
-        }
-        canvas.drawCircle(aim.x, aim.y, aim.r, aim.paint)
-//        canvas.drawPath(point.tracePath, point.tracePaint)
-        attractors.forEach {
-//            canvas.drawPath(it.tracePath, it.tracePaint)
-            canvas.drawCircle(it.x, it.y, it.r, it.paint)
         }
         canvas.drawCircle(point.x, point.y, point.r, point.paint)
     }
