@@ -8,19 +8,19 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".GameActivity">
+        <activity android:name=".game.GameActivity">
 
         </activity>
-        <activity android:name=".StartActivity">
+        <activity android:name=".start.StartActivity">
 
             <intent-filter>
                 <category android:name="android.intent.category.LAUNCHER" />
                 <action android:name="android.intent.action.MAIN" />
             </intent-filter>
         </activity>
-        <activity android:name=".StartActivityTitleAnimated" >
+        <activity android:name=".start.StartActivityTitleAnimated" >
         </activity>
-        <activity android:name=".ConstructorActivity" />
+        <activity android:name=".constructor.ConstructorActivity" />
     </application>
 
 </manifest>

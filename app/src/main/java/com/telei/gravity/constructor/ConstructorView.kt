@@ -1,4 +1,4 @@
-package com.telei.gravity
+package com.telei.gravity.constructor
 
 import android.content.Context
 import android.graphics.PointF
@@ -8,6 +8,7 @@ import android.view.MotionEvent.ACTION_DOWN
 import android.view.MotionEvent.ACTION_MOVE
 import android.view.View
 import android.widget.Toast
+import com.telei.gravity.and
 
 class ConstructorView @JvmOverloads constructor(
     context: Context,
@@ -20,10 +21,7 @@ class ConstructorView @JvmOverloads constructor(
 
     lateinit var showObjectSelection: () -> Unit
 
-    fun onObjectSelected(selection: GameObject) {
-        if (selection == GameObject.BLACK_HOLE) {
-
-        }
+    fun onObjectSelected() {
         Toast.makeText(context, "Selected", Toast.LENGTH_SHORT).show()
     }
 
