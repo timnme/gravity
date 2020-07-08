@@ -9,17 +9,18 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity android:name=".GameActivity">
-            <intent-filter>
-                <category android:name="android.intent.category.LAUNCHER" />
-                <action android:name="android.intent.action.MAIN" />
-            </intent-filter>
 
         </activity>
         <activity android:name=".StartActivity">
 
+            <intent-filter>
+                <category android:name="android.intent.category.LAUNCHER" />
+                <action android:name="android.intent.action.MAIN" />
+            </intent-filter>
         </activity>
-        <activity android:name=".Activity" >
+        <activity android:name=".StartActivityTitleAnimated" >
         </activity>
+        <activity android:name=".ConstructorActivity" />
     </application>
 
 </manifest>

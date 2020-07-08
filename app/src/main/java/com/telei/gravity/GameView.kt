@@ -21,7 +21,6 @@ private const val POINT_Y = 8f / 9f
 
 data class Attraction(val completed: Boolean)
 
-
 private fun createPaint() = Paint().apply {
     style = Paint.Style.FILL
     isAntiAlias = true
@@ -69,8 +68,7 @@ class GameView @JvmOverloads constructor(
     private lateinit var extraBitmap: Bitmap
     private lateinit var extraCanvas: Canvas
 
-
-    inner class Body(
+    private inner class Body(
         val id: Int,
         val x0: Float,                   // pixels
         val y0: Float,                   // pixels
@@ -85,14 +83,19 @@ class GameView @JvmOverloads constructor(
         val tracePath: Path = Path(),
         val tracePaint: Paint = Paint()
     ) {
+        var previousDrawFinishX = x0
+        var previousDrawFinishY = y0
+
         init {
-            extraCanvas.drawCircle(x, y, r, paint)
+            draw()
+        }
+
+        fun draw() {
+            extraCanvas.drawCircle(x0, y0, r, paint)
         }
 
         fun attract(body: Body, time: Float): Attraction {
-            val dxPixels = (x - body.x)
-            val dyPixels = (y - body.y)
-            val distancePixels = sqrt(dxPixels * dxPixels + dyPixels * dyPixels)
+            val (dxPixels, dyPixels, distancePixels) = distance(body)
             if (body.attractable || attractable) {
                 val dx = dxPixels * MPP
                 val dy = dyPixels * MPP
@@ -106,12 +109,21 @@ class GameView @JvmOverloads constructor(
                     val accelerationY = (forceY / body.m).toFloat()
                     body.vX += accelerationX * time
                     body.vY += accelerationY * time
-                    body.tracePath.reset()
-                    body.tracePath.moveTo(body.x, body.y)
                     body.x += body.vX * time
                     body.y += body.vY * time
-                    body.tracePath.lineTo(body.x, body.y)
-                    extraCanvas.drawPath(point.tracePath, point.tracePaint)
+                    val dX = body.x - previousDrawFinishX
+                    val dY = body.y - previousDrawFinishY
+                    val dist = sqrt(dX * dX + dY * dY)
+                    if (dist >= 10) {
+                        // TODO: 7/7/2020 move from here
+//                        body.tracePath.reset()
+//                        body.tracePath.moveTo(previousDrawFinishX, previousDrawFinishY)
+//                        body.tracePath.lineTo(body.x, body.y)
+//                        extraCanvas.drawPath(body.tracePath, body.tracePaint)
+                        extraCanvas.drawPoint(body.x, body.y, body.tracePaint)
+                        previousDrawFinishX = body.x
+                        previousDrawFinishY = body.y
+                    }
                 }
                 if (attractable) {
                     val accelerationX = -(forceX / m).toFloat()
@@ -129,6 +141,18 @@ class GameView @JvmOverloads constructor(
             return Attraction(completed = distancePixels < r)
         }
 
+        private fun distance(body: Body): Triple<Float, Float, Float> {
+            val dxPixels = (x - body.x)
+            val dyPixels = (y - body.y)
+            val distancePixels = sqrt(dxPixels * dxPixels + dyPixels * dyPixels)
+            return Triple(dxPixels, dyPixels, distancePixels)
+        }
+
+        fun attraction(body: Body): Attraction {
+            val (_, _, distance) = distance(body)
+            return Attraction(completed = distance < r)
+        }
+
         fun reset() {
             x = x0
             y = y0
@@ -142,9 +166,7 @@ class GameView @JvmOverloads constructor(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
 
-        if (::extraBitmap.isInitialized) extraBitmap.recycle()
-        extraBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        extraCanvas = Canvas(extraBitmap)
+        initBitmap()
 
         val pointPaint = createPaint().apply {
             color = pointColor
@@ -183,38 +205,44 @@ class GameView @JvmOverloads constructor(
             paint = pointPaint,
             tracePaint = travelPaint
         )
-        attractors.add(
-            Body(
-                id = id++,
-                x0 = 0.2f * w,
-                y0 = 0.5f * h,
-                m = 1E26,
-                r = attractorSize,
-                paint = attractorPaint
-            )
-        )
+//        attractors.add(
+//            Body(
+//                id = id++,
+//                x0 = 0.2f * w,
+//                y0 = 0.5f * h,
+//                m = 1E25,
+//                r = attractorSize,
+//                paint = attractorPaint
+//            )
+//        )
         attractors.add(
             Body(
                 id = id++,
                 x0 = 0.5f * w,
                 y0 = 0.5f * h,
-                m = 1E25,
-                r = attractorSize,
-                paint = attractorPaint
-            )
-        )
-        attractors.add(
-            Body(
-                id = id++,
-                x0 = 0.8f * w,
-                y0 = 0.5f * h,
                 m = 1E26,
                 r = attractorSize,
                 paint = attractorPaint
             )
         )
+//        attractors.add(
+//            Body(
+//                id = id++,
+//                x0 = 0.8f * w,
+//                y0 = 0.5f * h,
+//                m = 1E25,
+//                r = attractorSize,
+//                paint = attractorPaint
+//            )
+//        )
 
         Choreographer.getInstance().postFrameCallback(this)
+    }
+
+    private fun initBitmap() {
+        if (::extraBitmap.isInitialized) extraBitmap.recycle()
+        extraBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        extraCanvas = Canvas(extraBitmap)
     }
 
     var a = -1
@@ -236,7 +264,7 @@ class GameView @JvmOverloads constructor(
                     }
                 }
             }
-            if (attracted || aim.attract(point, timeSeconds).completed) {
+            if (attracted || aim.attraction(point).completed) {
                 finish()
             } else {
                 invalidate()
@@ -249,13 +277,16 @@ class GameView @JvmOverloads constructor(
     private fun finish() {
         launched = false
         point.reset()
+        initBitmap()
+        aim.draw()
+        attractors.forEach(Body::draw)
         invalidate()
     }
 
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
         canvas ?: return
-        canvas.drawBitmap(extraBitmap, 0f, 0f, null)
+//        canvas.drawBitmap(extraBitmap, 0f, 0f, null)
         if (!launched) {
             canvas.drawPath(slingPath, slingPaint)
             canvas.drawPath(cursorPath, cursorPaint)
