@@ -14,6 +14,8 @@ data class GameData(
 )
 
 data class Distance(var xD: Float, var yD: Float) {
+    constructor(x1: Float, x2: Float, y1: Float, y2: Float) : this(x1 - x2, y1 - y2)
+
     fun calculate(): Float = sqrt(xD * xD + yD * yD)
 
     fun scale(factor: Float) {
@@ -23,8 +25,8 @@ data class Distance(var xD: Float, var yD: Float) {
 }
 
 sealed class GameEntity {
-    protected abstract val xR: Float // 0..1 x position
-    protected abstract val yR: Float // 0..1 y position
+    protected abstract var xR: Float // 0..1 x position
+    protected abstract var yR: Float // 0..1 y position
 
     var x0: Float = 0f
     var y0: Float = 0f
@@ -43,11 +45,17 @@ sealed class GameEntity {
     infix fun reached(other: GameEntity): Boolean = distance(other).calculate() < other.r
 
     protected fun distance(other: GameEntity): Distance = Distance(x - other.x, y - other.y)
+
+    fun normalize(width: Int, height: Int) {
+        xR = x / width
+        yR = y / height
+    }
+
 }
 
 data class Aim(
-    override val xR: Float,
-    override val yR: Float
+    override var xR: Float,
+    override var yR: Float
 ) : GameEntity()
 
 sealed class Body : GameEntity() {
@@ -94,8 +102,8 @@ sealed class Body : GameEntity() {
 }
 
 class Point(
-    override val xR: Float,
-    override val yR: Float,
+    override var xR: Float,
+    override var yR: Float,
     override val m: Double = 1.0,
     override var vX: Float = 0f,
     override var vY: Float = 0f,
@@ -104,8 +112,8 @@ class Point(
 
 class Attractor(
     val id: Int,
-    override val xR: Float,
-    override val yR: Float,
+    override var xR: Float,
+    override var yR: Float,
     override val m: Double = M,
     override var vX: Float = 0f,
     override var vY: Float = 0f,
@@ -113,6 +121,6 @@ class Attractor(
 ) : Body()
 
 class Portal(
-    override val xR: Float,
-    override val yR: Float
+    override var xR: Float,
+    override var yR: Float
 ) : GameEntity()

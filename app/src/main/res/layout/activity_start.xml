@@ -5,7 +5,7 @@
     android:layout_height="match_parent">
 
     <ImageView
-        android:id="@+id/title"
+        android:id="@+id/gameTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="154dp"
@@ -16,25 +16,27 @@
         app:layout_constraintTop_toTopOf="parent"
         app:srcCompat="@drawable/ic_gravity" />
 
-    <ImageView
+    <Button
         android:id="@+id/start"
+        style="@style/Widget.AppCompat.Button.Borderless.Colored"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="162dp"
+        android:text="start"
         app:layout_constraintBottom_toTopOf="@+id/construct"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/title"
-        app:srcCompat="@drawable/ic_start" />
+        app:layout_constraintTop_toBottomOf="@+id/gameTitle" />
 
-    <ImageView
+    <Button
         android:id="@+id/construct"
+        style="@style/Widget.AppCompat.Button.Borderless.Colored"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="32dp"
+        android:text="construct"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/start"
-        app:srcCompat="@drawable/ic_start" />
+        app:layout_constraintTop_toBottomOf="@+id/start" />
 </androidx.constraintlayout.widget.ConstraintLayout>

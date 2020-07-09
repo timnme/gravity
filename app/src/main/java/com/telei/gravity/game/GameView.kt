@@ -9,6 +9,7 @@ import android.view.MotionEvent
 import android.view.MotionEvent.*
 import android.view.View
 import androidx.core.content.ContextCompat
+import com.telei.gravity.FieldView
 import com.telei.gravity.R
 import com.telei.gravity.and
 import com.telei.gravity.createPaint
@@ -18,41 +19,15 @@ class GameView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
-) : View(context, attrs, defStyleAttr), Choreographer.FrameCallback {
-    private var pixelsPerDip = TypedValue.applyDimension(
-        TypedValue.COMPLEX_UNIT_DIP, 1f, resources.displayMetrics
-    )
-
+) : FieldView(context, attrs, defStyleAttr), Choreographer.FrameCallback {
     private val cursorLength = context.resources.getDimension(R.dimen.cursor)
 
-    private val pointColor = ContextCompat.getColor(
-        context,
-        R.color.colorAccent
-    )
-    private val aimColor = ContextCompat.getColor(
-        context,
-        R.color.colorPrimaryDark
-    )
-
-    private val pointSize = context.resources.getDimension(R.dimen.point)
-    private val aimSize = context.resources.getDimension(R.dimen.aim)
-    private val attractorSize = context.resources.getDimension(R.dimen.attractor)
-
-    private val pointPaint = createPaint().apply {
-        color = pointColor
-    }
-    private val aimPaint = createPaint().apply {
-        color = aimColor
-    }
-    private val attractorPaint = createPaint().apply {
-        color = Color.BLACK
-    }
     private val tracePath = Path()
     private val tracePaint = createPaint().apply {
         style = Paint.Style.STROKE
+        color = pointColor
         strokeWidth = 3f
         pathEffect = DashPathEffect(floatArrayOf(7f, 4f), 0f)
-        color = pointColor
     }
 
     private val slingPath = Path()
@@ -65,9 +40,9 @@ class GameView @JvmOverloads constructor(
     private val cursorPath = Path()
     private val cursorPaint = createPaint().apply {
         style = Paint.Style.STROKE
-        pathEffect = DashPathEffect(floatArrayOf(3f, 5f), 0f)
         color = pointColor
         strokeWidth = 3f
+        pathEffect = DashPathEffect(floatArrayOf(3f, 5f), 0f)
     }
 
     private lateinit var aim: Aim
@@ -91,7 +66,6 @@ class GameView @JvmOverloads constructor(
                 it.init(width, height, attractorSize)
             }
             finish()
-            Choreographer.getInstance().postFrameCallback(this)
         }
 
     private fun finish() {
@@ -100,6 +74,14 @@ class GameView @JvmOverloads constructor(
         tracePath.reset()
         tracePath.moveTo(point.x0, point.y0)
         invalidate()
+    }
+
+    fun start() {
+        Choreographer.getInstance().postFrameCallback(this)
+    }
+
+    fun stop() {
+        Choreographer.getInstance().removeFrameCallback(this)
     }
 
     override fun doFrame(frameTimeNanos: Long) {

@@ -7,12 +7,8 @@
     <!--remember to add "vectorDrawables.useSupportLibrary = true" in the gradle build file-->
     <!--to start the animation "(animatedNfcLogo.drawable as? AnimatedVectorDrawable)?.start()"-->
 
-    <com.telei.gravity.TitleView
-        android:layout_width="300dp"
-        android:layout_height="50dp"/>
-
     <ImageView
-        android:id="@+id/sssss"
+        android:id="@+id/gameTitleAnimated"
         android:layout_width="80dp"
         android:layout_height="80dp"
         android:src="@drawable/anim_title"/>

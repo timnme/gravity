@@ -6,19 +6,20 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.DialogFragment
 import com.telei.gravity.R
-import kotlinx.android.synthetic.main.dialog_select_object.*
+import com.telei.gravity.game.GameEntity
+import kotlinx.android.synthetic.main.dialog_create_game_entity.*
 
-class SelectObjectDialogFragment : DialogFragment() {
-    var onSelection: (() -> Unit)? = null
+class CreateGameEntityDialogFragment : DialogFragment() {
+    var onCreation: ((GameEntity) -> Unit)? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
-    ): View? = inflater.inflate(R.layout.dialog_select_object, container, false)
+    ): View? = inflater.inflate(R.layout.dialog_create_game_entity, container, false)
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        buttonBlackHole.setOnClickListener {
-            onSelection?.invoke()
+        buttonAttractor.setOnClickListener {
+
         }
     }
 }
