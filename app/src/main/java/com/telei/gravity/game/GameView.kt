@@ -3,12 +3,9 @@ package com.telei.gravity.game
 import android.content.Context
 import android.graphics.*
 import android.util.AttributeSet
-import android.util.TypedValue
 import android.view.Choreographer
 import android.view.MotionEvent
 import android.view.MotionEvent.*
-import android.view.View
-import androidx.core.content.ContextCompat
 import com.telei.gravity.FieldView
 import com.telei.gravity.R
 import com.telei.gravity.and
@@ -23,31 +20,34 @@ class GameView @JvmOverloads constructor(
     private val cursorLength = context.resources.getDimension(R.dimen.cursor)
 
     private val tracePath = Path()
+    private val tracePathMeasure = PathMeasure(tracePath, false)
     private val tracePaint = createPaint().apply {
         style = Paint.Style.STROKE
         color = pointColor
-        strokeWidth = 3f
-        pathEffect = DashPathEffect(floatArrayOf(7f, 4f), 0f)
+        strokeWidth = 2f // TODO: 7/10/2020
+//        pathEffect = DashPathEffect(floatArrayOf(7f, 4f), 0f)
     }
 
     private val slingPath = Path()
     private val slingPaint = createPaint().apply {
         style = Paint.Style.STROKE
         color = pointColor
-        strokeWidth = 4f
+        strokeWidth = 4f // TODO: 7/10/2020
     }
 
     private val cursorPath = Path()
     private val cursorPaint = createPaint().apply {
         style = Paint.Style.STROKE
         color = pointColor
-        strokeWidth = 3f
+        strokeWidth = 3f // TODO: 7/10/2020
         pathEffect = DashPathEffect(floatArrayOf(3f, 5f), 0f)
     }
 
     private lateinit var aim: Aim
     private lateinit var point: Point
     private lateinit var attractors: List<Attractor>
+
+    private var traceMaxLength = 0f
 
     private var pointStart = 0f and 0f
     private var launched = false
@@ -57,14 +57,15 @@ class GameView @JvmOverloads constructor(
         set(value) {
             field = value ?: return
             aim = value.aim
-            aim.init(width, height, aimSize)
+            aim.init(width, height)
             point = value.point
-            point.init(width, height, pointSize)
+            point.init(width, height)
             pointStart = point.x0 and point.y0
             attractors = value.attractors
             attractors.forEach {
-                it.init(width, height, attractorSize)
+                it.init(width, height)
             }
+            traceMaxLength = height.toFloat()
             finish()
         }
 
@@ -89,19 +90,30 @@ class GameView @JvmOverloads constructor(
             val timeSeconds = ((frameTimeNanos - lastFrameTimeNanos) / 1E9).toFloat()
             var attracted = false
             attractors.forEach {
-                it.attract(point, timeSeconds, pixelsPerDip)
+                it.attract(point, timeSeconds)
                 if (point reached it) {
                     attracted = true
                 }
                 attractors.forEach { nested ->
                     if (nested.id != it.id) {
-                        it.attract(nested, timeSeconds, pixelsPerDip)
+                        it.attract(nested, timeSeconds)
                     }
                 }
             }
             if (attracted || point reached aim) {
                 finish()
             } else {
+                tracePathMeasure.setPath(tracePath, false)
+                val length = tracePathMeasure.length
+                if (length > traceMaxLength) {
+                    tracePath.rewind()
+                    tracePathMeasure.getSegment(
+                        length - traceMaxLength,
+                        length,
+                        tracePath,
+                        true
+                    )
+                }
                 tracePath.lineTo(point.x, point.y)
                 invalidate()
             }

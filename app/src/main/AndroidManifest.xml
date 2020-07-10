@@ -2,6 +2,7 @@
     package="com.telei.gravity">
 
     <application
+        android:name=".App"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -12,13 +13,13 @@
 
         </activity>
         <activity android:name=".start.StartActivity">
-
             <intent-filter>
                 <category android:name="android.intent.category.LAUNCHER" />
                 <action android:name="android.intent.action.MAIN" />
             </intent-filter>
         </activity>
-        <activity android:name=".start.StartActivityTitleAnimated" >
+        <activity android:name=".start.StartActivityTitleAnimated">
+
         </activity>
         <activity android:name=".constructor.ConstructorActivity" />
     </application>

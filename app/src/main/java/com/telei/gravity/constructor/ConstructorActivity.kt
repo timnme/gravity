@@ -15,7 +15,6 @@ class ConstructorActivity : BaseActivity() {
         buttonReady.setOnClickListener {
             Files.gameData = constructor.construct()
             start<GameActivity>()
-            finish()
         }
     }
 }

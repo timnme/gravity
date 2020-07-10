@@ -5,10 +5,8 @@ import android.graphics.Canvas
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.MotionEvent.*
-import com.telei.gravity.FieldView
-import com.telei.gravity.and
+import com.telei.gravity.*
 import com.telei.gravity.game.*
-import com.telei.gravity.isIn
 
 private const val LONG_PRESS_DURATION = 300
 
@@ -25,6 +23,7 @@ class ConstructorView @JvmOverloads constructor(
     private lateinit var attractors: MutableList<Attractor>
 
     private var attractorId = 0
+    private var dragging: Boolean = false
     private var dragged: GameEntity? = null
 
     fun construct(): GameData = GameData(
@@ -39,16 +38,16 @@ class ConstructorView @JvmOverloads constructor(
         super.onSizeChanged(w, h, oldw, oldh)
 
         aim = Aim(0.8f, 0.2f)
-        aim.init(w, h, aimSize)
+        aim.init(w, h)
         point = Point(0.2f, 0.8f)
-        point.init(w, h, pointSize)
+        point.init(w, h)
         attractors = mutableListOf(
             Attractor(
                 id = attractorId++,
                 xR = 0.5f,
                 yR = 0.5f
             ).also {
-                it.init(w, h, attractorSize)
+                it.init(w, h)
             }
         )
     }
@@ -56,11 +55,20 @@ class ConstructorView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
         canvas ?: return
-        canvas.drawCircle(aim.x, aim.y, aim.r, aimPaint)
-        attractors.forEach {
-            canvas.drawCircle(it.x, it.y, it.r, attractorPaint)
+        if (dragged == aim) {
+            aim.drawHalo(canvas, haloPaint)
         }
-        canvas.drawCircle(point.x, point.y, point.r, pointPaint)
+        aim.draw(canvas, aimPaint)
+        attractors.forEach {
+            if (dragged == it) {
+                it.drawHalo(canvas, haloPaint)
+            }
+            it.draw(canvas, attractorPaint)
+        }
+        if (dragged == point) {
+            point.drawHalo(canvas, haloPaint)
+        }
+        point.draw(canvas, pointPaint)
     }
 
     override fun onTouchEvent(event: MotionEvent?): Boolean {
@@ -79,28 +87,63 @@ class ConstructorView @JvmOverloads constructor(
                 } else {
                     val currentTime = System.currentTimeMillis()
                     if (currentTime - touchStartTime > LONG_PRESS_DURATION) {
-                        dragged = when {
-                            touch isIn aim -> aim
-                            touch isIn point -> point
-                            else -> {
-                                var draggedAttractor: GameEntity? = null
-                                for (attractor in attractors) {
-                                    if (touch isIn attractor) {
-                                        draggedAttractor = attractor
-                                        break
-                                    }
-                                }
-                                draggedAttractor
-                            }
-                        }
+                        dragging = true
+                        dragged = findTouched()
                     }
                 }
             }
             ACTION_UP -> {
+                if (!dragging) {
+                    val touched = findTouchedAttractor()
+                    if (touched != null) {
+                        attractors.removeMatching {
+                            it.id == touched.id
+                        }
+                    } else {
+                        attractors.add(
+                            Attractor(
+                                id = attractorId++,
+                                xR = touch.x / width,
+                                yR = touch.y / height
+                            ).also {
+                                it.init(width, height)
+                            }
+                        )
+                    }
+                }
                 dragged = null
+                dragging = false
+
+                invalidate()
             }
         }
         return true
+    }
+
+    private fun findTouched(): GameEntity? = when {
+        touch isInHaloOf aim -> aim
+        touch isInHaloOf point -> point
+        else -> {
+            var draggedAttractor: GameEntity? = null
+            for (attractor in attractors) {
+                if (touch isInHaloOf attractor) {
+                    draggedAttractor = attractor
+                    break
+                }
+            }
+            draggedAttractor
+        }
+    }
+
+    private fun findTouchedAttractor(): Attractor? {
+        var draggedAttractor: Attractor? = null
+        for (attractor in attractors) {
+            if (touch isIn attractor) {
+                draggedAttractor = attractor
+                break
+            }
+        }
+        return draggedAttractor
     }
 
 }

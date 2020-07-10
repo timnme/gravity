@@ -1,10 +1,22 @@
 package com.telei.gravity.game
 
+import android.util.TypedValue
+import com.telei.gravity.App
+import com.telei.gravity.R
 import kotlin.math.sqrt
 
 private const val M: Double = 1E25        // Attractor unit mass
 private const val G: Double = 6.67408E-11 // gravitational constant
 private const val MPDP = 10000f           // meters per dp
+
+private val pixelsPerDip: Float by lazy {
+    TypedValue.applyDimension(
+        TypedValue.COMPLEX_UNIT_DIP, 1f, App.context.resources.displayMetrics
+    )
+}
+private val pointSize: Float by lazy { App.context.resources.getDimension(R.dimen.point) }
+private val aimSize: Float by lazy { App.context.resources.getDimension(R.dimen.aim) }
+private val attractorSize: Float by lazy { App.context.resources.getDimension(R.dimen.attractor) }
 
 data class GameData(
     val aim: Aim,
@@ -27,24 +39,33 @@ data class Distance(var xD: Float, var yD: Float) {
 sealed class GameEntity {
     protected abstract var xR: Float // 0..1 x position
     protected abstract var yR: Float // 0..1 y position
+    protected abstract val haloRatio: Float
 
     var x0: Float = 0f
     var y0: Float = 0f
     var r: Float = 0f
     var x: Float = 0f
     var y: Float = 0f
+    var haloR: Float = 0f
+        private set
 
-    fun init(width: Int, height: Int, radius: Float) {
+    fun init(width: Int, height: Int) {
         x0 = width * xR
         y0 = height * yR
-        r = radius
+        r = when (this) {
+            is Aim -> aimSize
+            is Point -> pointSize
+            is Attractor -> attractorSize
+            is Portal -> attractorSize
+        }
+        haloR = r * haloRatio
         x = x0
         y = y0
     }
 
-    infix fun reached(other: GameEntity): Boolean = distance(other).calculate() < other.r
-
     protected fun distance(other: GameEntity): Distance = Distance(x - other.x, y - other.y)
+
+    infix fun reached(other: GameEntity): Boolean = distance(other).calculate() < other.r
 
     fun normalize(width: Int, height: Int) {
         xR = x / width
@@ -55,7 +76,8 @@ sealed class GameEntity {
 
 data class Aim(
     override var xR: Float,
-    override var yR: Float
+    override var yR: Float,
+    override val haloRatio: Float = 1.5f
 ) : GameEntity()
 
 sealed class Body : GameEntity() {
@@ -64,10 +86,12 @@ sealed class Body : GameEntity() {
     abstract var vY: Float              // pixels/s
     abstract val attractable: Boolean
 
-    fun attract(body: Body, time: Float, pixelsPerDp: Float) {
+    private val ppdp = pixelsPerDip
+
+    fun attract(body: Body, time: Float) {
         if (body.attractable || attractable) {
             val distance = distance(body)
-            distance.scale(MPDP / pixelsPerDp)
+            distance.scale(MPDP / ppdp)
             val d = distance.calculate()
             val force = G * m * body.m / (d * d)
             val unitForce = force / d
@@ -104,6 +128,7 @@ sealed class Body : GameEntity() {
 class Point(
     override var xR: Float,
     override var yR: Float,
+    override val haloRatio: Float = 10f,
     override val m: Double = 1.0,
     override var vX: Float = 0f,
     override var vY: Float = 0f,
@@ -114,6 +139,7 @@ class Attractor(
     val id: Int,
     override var xR: Float,
     override var yR: Float,
+    override val haloRatio: Float = 2f,
     override val m: Double = M,
     override var vX: Float = 0f,
     override var vY: Float = 0f,
@@ -122,5 +148,6 @@ class Attractor(
 
 class Portal(
     override var xR: Float,
-    override var yR: Float
+    override var yR: Float,
+    override val haloRatio: Float = 2f
 ) : GameEntity()

@@ -22,17 +22,9 @@ abstract class FieldView @JvmOverloads constructor(
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
-    protected var pixelsPerDip = TypedValue.applyDimension(
-        TypedValue.COMPLEX_UNIT_DIP, 1f, resources.displayMetrics
-    )
-
     protected val pointColor = ContextCompat.getColor(context, R.color.colorAccent)
     protected val aimColor = ContextCompat.getColor(context, R.color.colorPrimaryDark)
     protected val attractorColor = Color.BLACK
-
-    protected val pointSize = context.resources.getDimension(R.dimen.point)
-    protected val aimSize = context.resources.getDimension(R.dimen.aim)
-    protected val attractorSize = context.resources.getDimension(R.dimen.attractor)
 
     protected val pointPaint = createPaint().apply {
         color = pointColor
@@ -42,5 +34,9 @@ abstract class FieldView @JvmOverloads constructor(
     }
     protected val attractorPaint = createPaint().apply {
         color = attractorColor
+    }
+    protected val haloPaint = createPaint().apply {
+        color = pointColor
+        alpha = (255 * 0.5f).toInt()
     }
 }
