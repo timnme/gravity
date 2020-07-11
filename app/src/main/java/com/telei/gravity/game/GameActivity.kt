@@ -2,9 +2,8 @@ package com.telei.gravity.game
 
 import android.os.Bundle
 import androidx.core.view.doOnLayout
+import com.telei.gravity.App
 import com.telei.gravity.BaseActivity
-import com.telei.gravity.Files
-import kotlinx.android.synthetic.main.activity_start.view.*
 
 class GameActivity : BaseActivity() {
     private lateinit var gameView: GameView
@@ -14,7 +13,8 @@ class GameActivity : BaseActivity() {
         gameView = GameView(this)
         setContentView(gameView)
         gameView.doOnLayout {
-            gameView.gameData = Files.gameData
+            gameView.playMode = true
+            gameView.gameData = App.currentLevel
         }
     }
 

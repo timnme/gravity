@@ -3,4 +3,8 @@
     <color name="colorPrimary">#FFF5D7</color>
     <color name="colorPrimaryDark">#C4C4C4</color>
     <color name="colorAccent">#E86464</color>
+    <color name="colorPortalEnter">#098CFF</color>
+    <color name="colorPortalExit">#FF7118</color>
+    <color name="colorHalo">#FF9992</color>
+    <color name="colorAttractor">#000000</color>
 </resources>
