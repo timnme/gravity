@@ -12,6 +12,7 @@ import com.telei.gravita.and
 import com.telei.gravita.color
 import com.telei.gravita.createPaint
 import com.telei.gravita.levels.Level
+import kotlin.math.abs
 import kotlin.math.sqrt
 
 class GameView @JvmOverloads constructor(
@@ -110,6 +111,7 @@ class GameView @JvmOverloads constructor(
             for (i in attractors.indices) {
                 val attractor = attractors[i]
                 attractor.attract(point, timeSeconds)
+                attractor.attract(aim, timeSeconds)
                 if (point reached attractor) attracted = true
                 if (hasAttractableAttractors) {
                     for (j in i + 1 until attractors.size) {
@@ -119,6 +121,9 @@ class GameView @JvmOverloads constructor(
                 attractor.move(timeSeconds)
             }
             point.move(timeSeconds)
+            aim.move(timeSeconds)
+//            point.vX *= 0.99f
+//            point.vY *= 0.99f
             if (attracted || point reached aim) {
                 finish()
             } else {
@@ -196,19 +201,31 @@ class GameView @JvmOverloads constructor(
         }
         when (event.action) {
             ACTION_DOWN -> {
-                finish()
+//                finish()
             }
             ACTION_MOVE -> {
+                if (launched) {
+                    if (abs(x - point.x) > abs(y - point.y)) {
+                        point.vX += if (x > point.x) -s else s
+                    } else {
+                        point.vY += if (y > point.y) -s else s
+                    }
+                }
                 invalidate()
             }
             ACTION_UP -> {
-                slingPath.reset()
-                cursorPath.reset()
-                point.vX = slingDx
-                point.vY = slingDy
-                launched = true
+                if (!launched) {
+                    slingPath.reset()
+                    cursorPath.reset()
+                    point.vX = slingDx
+                    point.vY = slingDy
+                    launched = true
+                }
             }
         }
         return true
     }
+
+
 }
+private const val s = 5

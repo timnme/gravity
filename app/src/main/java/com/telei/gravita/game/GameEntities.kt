@@ -8,7 +8,7 @@ import kotlin.math.pow
 import kotlin.math.sqrt
 
 private const val G: Double = 6.67408E-11 // gravitational constant
-private const val MPDP = 10000f // meters per dp
+private const val MPDP = 5000f // meters per dp
 
 data class Distance(var xD: Float, var yD: Float) {
     constructor(x1: Float, x2: Float, y1: Float, y2: Float) : this(x1 - x2, y1 - y2)
@@ -38,7 +38,7 @@ sealed class Body {
         set(value) {
             prevX = field
             field = value
-            if (value < 0f || value > width)  {
+            if (value < 0f || value > width) {
                 vX = -vX
             }
         }
@@ -104,8 +104,10 @@ sealed class Body {
 data class Aim(
     override var xR: Float,
     override var yR: Float,
-    override var haloF: Float = 1.5f
-) : Body()
+    override var m: Double = 1.0,
+    override var haloF: Float = 4f,
+    override var attractable: Boolean = true
+) : Massive()
 
 sealed class Massive : Body() {
     abstract var m: Double              // kg
@@ -116,7 +118,7 @@ sealed class Massive : Body() {
     fun attract(other: Massive, time: Float) {
         if (other.attractable || this.attractable) {
             val distance = distance(other)
-            val scaleFactor = MPDP / ppdp
+            val scaleFactor = MPDP / ppdp // TODO: 7/12/2020 optimize
             distance.scale(scaleFactor)
             val d = distance.calculate()
             val scaledR = r * scaleFactor
@@ -171,7 +173,7 @@ data class Attractor(
     override var attractable: Boolean = false
 ) : Massive() {
     companion object {
-        private const val M: Double = 1E24 // Attractor unit mass
+        private const val M: Double = 2E23 // Attractor unit mass
 
         const val MAX_F = 6f
     }
