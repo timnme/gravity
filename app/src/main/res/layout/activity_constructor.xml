@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <com.telei.gravity.constructor.ConstructorView
+    <com.telei.gravita.constructor.ConstructorView
         android:id="@+id/constructor"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />

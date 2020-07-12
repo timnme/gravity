@@ -1,4 +1,4 @@
-package com.telei.gravity.game
+package com.telei.gravita.game
 
 import android.content.Context
 import android.graphics.*
@@ -7,10 +7,11 @@ import android.view.Choreographer
 import android.view.MotionEvent
 import android.view.MotionEvent.*
 import android.view.View
-import com.telei.gravity.R
-import com.telei.gravity.and
-import com.telei.gravity.color
-import com.telei.gravity.createPaint
+import com.telei.gravita.R
+import com.telei.gravita.and
+import com.telei.gravita.color
+import com.telei.gravita.createPaint
+import com.telei.gravita.levels.Level
 import kotlin.math.sqrt
 
 class GameView @JvmOverloads constructor(
@@ -47,6 +48,7 @@ class GameView @JvmOverloads constructor(
     private lateinit var point: Point
     private lateinit var attractors: List<Attractor>
     private lateinit var portals: List<Portal>
+    private lateinit var chords: List<Chord>
 
     private var traceMaxLength = 0f
 
@@ -57,7 +59,7 @@ class GameView @JvmOverloads constructor(
 
     var playMode = false
 
-    var gameData: GameData? = null
+    var level: Level? = null
         set(value) {
             field = value ?: return
             aim = value.aim
@@ -72,6 +74,10 @@ class GameView @JvmOverloads constructor(
             }
             portals = value.portals
             portals.forEach {
+                it.init(width, height)
+            }
+            chords = value.chords
+            chords.forEach {
                 it.init(width, height)
             }
             traceMaxLength = height.toFloat()
@@ -100,9 +106,11 @@ class GameView @JvmOverloads constructor(
     override fun doFrame(frameTimeNanos: Long) {
         if (launched) {
             val timeSeconds = ((frameTimeNanos - lastFrameTimeNanos) / 1E9).toFloat()
+            var attracted = false
             for (i in attractors.indices) {
                 val attractor = attractors[i]
                 attractor.attract(point, timeSeconds)
+                if (point reached attractor) attracted = true
                 if (hasAttractableAttractors) {
                     for (j in i + 1 until attractors.size) {
                         attractor.attract(attractors[j], timeSeconds)
@@ -111,12 +119,15 @@ class GameView @JvmOverloads constructor(
                 attractor.move(timeSeconds)
             }
             point.move(timeSeconds)
-            if (point reached aim) {
+            if (attracted || point reached aim) {
                 finish()
             } else {
+                chords.forEach {
+                    it.receive(point)
+                }
                 var ported = false
                 portals.forEach {
-                    if (it.tryPort(point)) ported = true
+                    if (it.port(point)) ported = true
                 }
 
                 tracePathMeasure.setPath(tracePath, false)
@@ -148,7 +159,8 @@ class GameView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
         canvas ?: return
-        gameData ?: return
+        level ?: return
+        chords.forEach { it.draw(canvas) }
         if (!launched) {
             canvas.drawPath(slingPath, slingPaint)
             canvas.drawPath(cursorPath, cursorPaint)
@@ -164,7 +176,7 @@ class GameView @JvmOverloads constructor(
         performClick()
         if (!playMode) return false
         event ?: return false
-        gameData ?: return false
+        level ?: return false
         val x = event.x
         val y = event.y
         with(slingPath) {

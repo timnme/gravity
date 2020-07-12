@@ -1,14 +1,14 @@
-package com.telei.gravity.start
+package com.telei.gravita.start
 
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
-import com.telei.gravity.BaseActivity
-import com.telei.gravity.R
-import com.telei.gravity.constructor.ConstructorActivity
-import com.telei.gravity.game.GameActivity
-import com.telei.gravity.levels.LevelsActivity
-import com.telei.gravity.start
+import com.telei.gravita.BaseActivity
+import com.telei.gravita.R
+import com.telei.gravita.constructor.ConstructorActivity
+import com.telei.gravita.game.GameActivity
+import com.telei.gravita.levels.LevelsActivity
+import com.telei.gravita.start
 import kotlinx.android.synthetic.main.activity_start.*
 import kotlinx.android.synthetic.main.activity_start_title_animated.*
 

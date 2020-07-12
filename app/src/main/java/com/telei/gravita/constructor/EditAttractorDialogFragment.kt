@@ -1,4 +1,4 @@
-package com.telei.gravity.constructor
+package com.telei.gravita.constructor
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -6,8 +6,8 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.view.isVisible
 import androidx.fragment.app.DialogFragment
-import com.telei.gravity.R
-import com.telei.gravity.game.Attractor
+import com.telei.gravita.R
+import com.telei.gravita.game.Attractor
 import kotlinx.android.synthetic.main.dialog_edit_attractor.*
 
 class EditAttractorDialogFragment : DialogFragment() {

@@ -1,4 +1,4 @@
-package com.telei.gravity
+package com.telei.gravita
 
 import android.content.pm.ActivityInfo
 import android.os.Bundle

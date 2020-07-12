@@ -7,4 +7,6 @@
     <color name="colorPortalExit">#FF7118</color>
     <color name="colorHalo">#FF9992</color>
     <color name="colorAttractor">#000000</color>
+    <color name="colorChord">#B900DE</color>
+    <color name="colorRepulsor">#FFFFFF</color>
 </resources>

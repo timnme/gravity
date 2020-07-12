@@ -1,4 +1,4 @@
-package com.telei.gravity
+package com.telei.gravita
 
 import org.junit.Test
 

@@ -1,20 +1,21 @@
-package com.telei.gravity.game
+package com.telei.gravita.game
 
 import android.os.Bundle
 import androidx.core.view.doOnLayout
-import com.telei.gravity.App
-import com.telei.gravity.BaseActivity
+import com.telei.gravita.App
+import com.telei.gravita.BaseActivity
 
 class GameActivity : BaseActivity() {
     private lateinit var gameView: GameView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        levels = false
         gameView = GameView(this)
         setContentView(gameView)
         gameView.doOnLayout {
             gameView.playMode = true
-            gameView.gameData = App.currentLevel
+            gameView.level = App.currentLevel
         }
     }
 

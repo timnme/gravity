@@ -1,4 +1,4 @@
-package com.telei.gravity
+package com.telei.gravita
 
 import android.app.Activity
 import android.content.Context
@@ -9,18 +9,18 @@ import android.graphics.PointF
 import androidx.annotation.ColorInt
 import androidx.annotation.ColorRes
 import androidx.core.content.ContextCompat
-import com.telei.gravity.game.Distance
-import com.telei.gravity.game.GameEntity
+import com.telei.gravita.game.Distance
+import com.telei.gravita.game.Body
 
 infix fun Float.and(y: Float): PointF = PointF(this, y)
 
-infix fun PointF.isIn(entity: GameEntity): Boolean =
-    Distance(x, entity.x, y, entity.y).calculate() < entity.r
+infix fun PointF.isIn(body: Body): Boolean =
+    Distance(x, body.x, y, body.y).calculate() < body.r
 
-infix fun PointF.isInHaloOf(entity: GameEntity): Boolean =
-    Distance(x, entity.x, y, entity.y).calculate() < entity.haloR
+infix fun PointF.isInHaloOf(body: Body): Boolean =
+    Distance(x, body.x, y, body.y).calculate() < body.haloR
 
-fun GameEntity.drawHalo(canvas: Canvas, paint: Paint) {
+fun Body.drawHalo(canvas: Canvas, paint: Paint) {
     canvas.drawCircle(x, y, haloR, paint)
 }
 

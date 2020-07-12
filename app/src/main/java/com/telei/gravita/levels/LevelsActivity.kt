@@ -1,4 +1,4 @@
-package com.telei.gravity.levels
+package com.telei.gravita.levels
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -6,13 +6,13 @@ import android.view.ViewGroup
 import androidx.core.view.doOnLayout
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.telei.gravity.App
-import com.telei.gravity.BaseActivity
-import com.telei.gravity.R
-import com.telei.gravity.game.GameActivity
-import com.telei.gravity.game.GameData
-import com.telei.gravity.game.GameView
-import com.telei.gravity.start
+import com.telei.gravita.App
+import com.telei.gravita.BaseActivity
+import com.telei.gravita.R
+import com.telei.gravita.game.GameActivity
+import com.telei.gravita.game.GameView
+import com.telei.gravita.game.levels
+import com.telei.gravita.start
 import kotlinx.android.synthetic.main.activity_levels.*
 import kotlinx.android.synthetic.main.item_level.view.*
 
@@ -22,7 +22,7 @@ class LevelsActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
 
         setContentView(R.layout.activity_levels)
-
+        levels = true
         val adapter = LevelAdapter(App.levels) {
             App.currentLevel = App.levels[it]
             start<GameActivity>()
@@ -35,7 +35,7 @@ class LevelsActivity : BaseActivity() {
 }
 
 private class LevelAdapter(
-    private var levels: List<GameData> = emptyList(),
+    private var levels: List<Level> = emptyList(),
     private val onClick: (Int) -> Unit
 ) : RecyclerView.Adapter<LevelAdapter.LevelHolder>() {
 
@@ -57,10 +57,10 @@ private class LevelAdapter(
             }
         }
 
-        fun bind(level: GameData, pos: Int) {
+        fun bind(level: Level, pos: Int) {
             itemView.textViewLevel.text = (pos + 1).toString()
             itemView.gameView.doOnLayout {
-                (it as GameView).gameData = level
+                (it as GameView).level = level
             }
         }
     }

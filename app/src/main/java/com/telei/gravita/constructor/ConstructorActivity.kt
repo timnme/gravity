@@ -1,11 +1,11 @@
-package com.telei.gravity.constructor
+package com.telei.gravita.constructor
 
 import android.os.Bundle
-import com.telei.gravity.App
-import com.telei.gravity.BaseActivity
-import com.telei.gravity.R
-import com.telei.gravity.game.*
-import com.telei.gravity.start
+import com.telei.gravita.App
+import com.telei.gravita.BaseActivity
+import com.telei.gravita.R
+import com.telei.gravita.game.*
+import com.telei.gravita.start
 import kotlinx.android.synthetic.main.activity_constructor.*
 
 class ConstructorActivity : BaseActivity() {
@@ -15,6 +15,7 @@ class ConstructorActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_constructor)
         constructorView = constructor
+        levels = false
 
         constructorView.onCreate = {
             CreateGameEntityDialogFragment().apply {
